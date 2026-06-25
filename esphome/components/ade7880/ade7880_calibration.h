@@ -3,7 +3,6 @@
 #include "esphome/core/component.h"
 #include "esphome/components/i2c/i2c.h"
 #include "esphome/components/sensor/sensor.h"
-#include "esphome/components/api/custom_api_device.h"
 #include "esphome/core/preferences.h"
 #include <cmath>
 
@@ -68,8 +67,7 @@ struct CalibrationData {
 // ============================================================================
 
 class ADE7880Component : public PollingComponent,
-                         public i2c::I2CDevice,
-                         public api::CustomAPIDevice {
+                         public i2c::I2CDevice {
  public:
   ADE7880Component() = default;
 
@@ -127,15 +125,6 @@ class ADE7880Component : public PollingComponent,
   // ========================================================================
 
   static int32_t convert_24bit_signed(uint32_t raw_value);
-
-  // ========================================================================
-  // Calibration Services (exposed to Home Assistant via CustomAPI)
-  // ========================================================================
-
-  void calibrate_voltage(std::string phase, float target_voltage);
-  void calibrate_current(std::string phase, float target_current);
-  void calibrate_power(std::string phase, float target_power);
-  void reset_calibration();
 
  private:
   // ========================================================================

@@ -11,7 +11,7 @@ static const char *const TAG = "ade7880";
 // ============================================================================
 
 void ADE7880Component::setup() {
-  ESP_LOGI(TAG, "Setting up ADE7880 Energy Meter with Calibration...");
+  ESP_LOGI(TAG, "Setting up ADE7880 Energy Meter...");
 
   // Load calibration data from Flash
   load_calibration_from_flash_();
@@ -19,19 +19,7 @@ void ADE7880Component::setup() {
   // Apply calibration to the device immediately after setup
   apply_calibration_to_device_();
 
-  // Register Home Assistant CustomAPI services for calibration
-  register_service(
-      &ADE7880Component::calibrate_voltage, "calibrate_voltage",
-      {"phase", "target_voltage"});
-  register_service(
-      &ADE7880Component::calibrate_current, "calibrate_current",
-      {"phase", "target_current"});
-  register_service(
-      &ADE7880Component::calibrate_power, "calibrate_power",
-      {"phase", "target_power"});
-  register_service(&ADE7880Component::reset_calibration, "reset_calibration");
-
-  ESP_LOGI(TAG, "ADE7880 setup complete. Calibration services registered.");
+  ESP_LOGI(TAG, "ADE7880 setup complete.");
 }
 
 void ADE7880Component::update() {
