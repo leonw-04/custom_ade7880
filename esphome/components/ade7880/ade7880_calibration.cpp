@@ -20,13 +20,13 @@ void ADE7880Component::setup() {
   apply_calibration_to_device_();
 
   // Register Home Assistant CustomAPI services for calibration
-  register_service<std::string, float>(
+  register_service(
       &ADE7880Component::calibrate_voltage, "calibrate_voltage",
       {"phase", "target_voltage"});
-  register_service<std::string, float>(
+  register_service(
       &ADE7880Component::calibrate_current, "calibrate_current",
       {"phase", "target_current"});
-  register_service<std::string, float>(
+  register_service(
       &ADE7880Component::calibrate_power, "calibrate_power",
       {"phase", "target_power"});
   register_service(&ADE7880Component::reset_calibration, "reset_calibration");
@@ -121,8 +121,9 @@ void ADE7880Component::dump_config() {
 // ============================================================================
 
 void ADE7880Component::load_calibration_from_flash_() {
+  const uint8_t *calib_key = (const uint8_t *)"ade7880_calib";
   auto calib_pref = global_preferences->make_preference<CalibrationData>(
-      0x44415E37, crc8("ade7880_calib"));  // CRC hash of "ade7880_calib"
+      0x44415E37, crc8(calib_key, 13));  // 13 = strlen("ade7880_calib")
 
   if (calib_pref.load(&calibration_data_)) {
     ESP_LOGI(TAG, "Calibration data loaded from Flash");
@@ -138,8 +139,9 @@ void ADE7880Component::load_calibration_from_flash_() {
 }
 
 void ADE7880Component::save_calibration_to_flash_() {
+  const uint8_t *calib_key = (const uint8_t *)"ade7880_calib";
   auto calib_pref = global_preferences->make_preference<CalibrationData>(
-      0x44415E37, crc8("ade7880_calib"));
+      0x44415E37, crc8(calib_key, 13));
 
   if (calib_pref.save(&calibration_data_)) {
     ESP_LOGI(TAG, "Calibration data saved to Flash");
