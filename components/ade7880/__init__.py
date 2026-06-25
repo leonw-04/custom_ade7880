@@ -4,7 +4,6 @@ This file handles:
 - Component-level configuration schema
 - PollingComponent base registration
 - I2C device setup
-- Sensor platform definitions
 """
 
 import esphome.codegen as cg
@@ -46,71 +45,15 @@ CONF_POWER_B = "power_b"
 CONF_POWER_C = "power_c"
 
 # Configuration schema for the main component
-# All options must be in ONE Schema dict, not extended separately
+# IMPORTANT: Only component-level options, NOT sensor schemas
 CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(): cv.declare_id(ADE7880Component),
-        # Phase A Sensors
-        cv.Optional(CONF_VOLTAGE_A): sensor.sensor_schema(
-            unit_of_measurement=UNIT_VOLT,
-            device_class=DEVICE_CLASS_VOLTAGE,
-            accuracy_decimals=3,
-            state_class=STATE_CLASS_MEASUREMENT,
-        ),
-        cv.Optional(CONF_CURRENT_A): sensor.sensor_schema(
-            unit_of_measurement=UNIT_AMPERE,
-            device_class=DEVICE_CLASS_CURRENT,
-            accuracy_decimals=4,
-            state_class=STATE_CLASS_MEASUREMENT,
-        ),
-        cv.Optional(CONF_POWER_A): sensor.sensor_schema(
-            unit_of_measurement=UNIT_WATT,
-            device_class=DEVICE_CLASS_POWER,
-            accuracy_decimals=2,
-            state_class=STATE_CLASS_MEASUREMENT,
-        ),
-        # Phase B Sensors
-        cv.Optional(CONF_VOLTAGE_B): sensor.sensor_schema(
-            unit_of_measurement=UNIT_VOLT,
-            device_class=DEVICE_CLASS_VOLTAGE,
-            accuracy_decimals=3,
-            state_class=STATE_CLASS_MEASUREMENT,
-        ),
-        cv.Optional(CONF_CURRENT_B): sensor.sensor_schema(
-            unit_of_measurement=UNIT_AMPERE,
-            device_class=DEVICE_CLASS_CURRENT,
-            accuracy_decimals=4,
-            state_class=STATE_CLASS_MEASUREMENT,
-        ),
-        cv.Optional(CONF_POWER_B): sensor.sensor_schema(
-            unit_of_measurement=UNIT_WATT,
-            device_class=DEVICE_CLASS_POWER,
-            accuracy_decimals=2,
-            state_class=STATE_CLASS_MEASUREMENT,
-        ),
-        # Phase C Sensors
-        cv.Optional(CONF_VOLTAGE_C): sensor.sensor_schema(
-            unit_of_measurement=UNIT_VOLT,
-            device_class=DEVICE_CLASS_VOLTAGE,
-            accuracy_decimals=3,
-            state_class=STATE_CLASS_MEASUREMENT,
-        ),
-        cv.Optional(CONF_CURRENT_C): sensor.sensor_schema(
-            unit_of_measurement=UNIT_AMPERE,
-            device_class=DEVICE_CLASS_CURRENT,
-            accuracy_decimals=4,
-            state_class=STATE_CLASS_MEASUREMENT,
-        ),
-        cv.Optional(CONF_POWER_C): sensor.sensor_schema(
-            unit_of_measurement=UNIT_WATT,
-            device_class=DEVICE_CLASS_POWER,
-            accuracy_decimals=2,
-            state_class=STATE_CLASS_MEASUREMENT,
-        ),
     }
 ).extend(cv.polling_component_schema("60s")).extend(
     i2c.i2c_device_schema(0x38)
 )
+
 
 async def to_code(config):
     """Generate C++ code for the main ADE7880Component.
@@ -119,7 +62,7 @@ async def to_code(config):
     1. Creates an instance of ADE7880Component
     2. Registers it as a PollingComponent
     3. Links it to the I2C bus
-    4. Creates and links all sensor instances
+    4. Creates and links all sensor instances (if they exist in parent config)
     """
     var = cg.new_Pvariable(config[CONF_ID])
     
@@ -129,47 +72,19 @@ async def to_code(config):
     # Link to I2C bus
     await i2c.register_i2c_device(var, config)
     
-    # Phase A Voltage Sensor
-    if CONF_VOLTAGE_A in config:
-        sens = await sensor.new_sensor(config[CONF_VOLTAGE_A])
-        cg.add(var.set_voltage_sensor_a(sens))
-    
-    # Phase B Voltage Sensor
-    if CONF_VOLTAGE_B in config:
-        sens = await sensor.new_sensor(config[CONF_VOLTAGE_B])
-        cg.add(var.set_voltage_sensor_b(sens))
-    
-    # Phase C Voltage Sensor
-    if CONF_VOLTAGE_C in config:
-        sens = await sensor.new_sensor(config[CONF_VOLTAGE_C])
-        cg.add(var.set_voltage_sensor_c(sens))
-    
-    # Phase A Current Sensor
-    if CONF_CURRENT_A in config:
-        sens = await sensor.new_sensor(config[CONF_CURRENT_A])
-        cg.add(var.set_current_sensor_a(sens))
-    
-    # Phase B Current Sensor
-    if CONF_CURRENT_B in config:
-        sens = await sensor.new_sensor(config[CONF_CURRENT_B])
-        cg.add(var.set_current_sensor_b(sens))
-    
-    # Phase C Current Sensor
-    if CONF_CURRENT_C in config:
-        sens = await sensor.new_sensor(config[CONF_CURRENT_C])
-        cg.add(var.set_current_sensor_c(sens))
-    
-    # Phase A Power Sensor
-    if CONF_POWER_A in config:
-        sens = await sensor.new_sensor(config[CONF_POWER_A])
-        cg.add(var.set_power_sensor_a(sens))
-    
-    # Phase B Power Sensor
-    if CONF_POWER_B in config:
-        sens = await sensor.new_sensor(config[CONF_POWER_B])
-        cg.add(var.set_power_sensor_b(sens))
-    
-    # Phase C Power Sensor
-    if CONF_POWER_C in config:
-        sens = await sensor.new_sensor(config[CONF_POWER_C])
-        cg.add(var.set_power_sensor_c(sens))
+    # Check parent for sensor configurations (defined in sensor.py)
+    # This allows users to define sensors under 'ade7880:' namespace in YAML
+    for conf_key, setter_name in [
+        (CONF_VOLTAGE_A, "set_voltage_sensor_a"),
+        (CONF_VOLTAGE_B, "set_voltage_sensor_b"),
+        (CONF_VOLTAGE_C, "set_voltage_sensor_c"),
+        (CONF_CURRENT_A, "set_current_sensor_a"),
+        (CONF_CURRENT_B, "set_current_sensor_b"),
+        (CONF_CURRENT_C, "set_current_sensor_c"),
+        (CONF_POWER_A, "set_power_sensor_a"),
+        (CONF_POWER_B, "set_power_sensor_b"),
+        (CONF_POWER_C, "set_power_sensor_c"),
+    ]:
+        if conf_key in config:
+            sens = await sensor.new_sensor(config[conf_key])
+            cg.add(getattr(var, setter_name)(sens))
