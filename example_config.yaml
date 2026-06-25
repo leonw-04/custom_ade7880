@@ -1,38 +1,26 @@
-"""Example ESPHome Configuration for ADE7880 Energy Meter with Calibration.
-
-This example demonstrates how to integrate the ADE7880 3-phase energy meter
-with on-board calibration capabilities into an ESPHome setup.
-
-WIRING (ESP32 to ADE7880):
-  ESP32 Pin 21 (SDA) -----> ADE7880 SDA (I2C)
-  ESP32 Pin 22 (SCL) -----> ADE7880 SCL (I2C)
-  ESP32 GND -----------> ADE7880 GND
-  ESP32 3V3 -----------> ADE7880 VDD (if needed)
-  ADE7880 IRQ (optional) -> ESP32 GPIO (for interrupt-based readings)
-
-I2C ADDRESS:
-  The ADE7880 has two possible I2C addresses:
-  - 0x38 (default, used in this example)
-  - 0x39 (if configured differently)
-
-USAGE:
-  1. Deploy this configuration to your ESP32 via esphome
-  2. Monitor the logs to verify I2C communication
-  3. Use Home Assistant UI to call the calibration services:
-     - calibrate_voltage: Calibrates RMS voltage for a specific phase
-     - calibrate_current: Calibrates RMS current for a specific phase
-     - calibrate_power: Calibrates active power for a specific phase
-     - reset_calibration: Resets all calibration values to zero
-  4. Calibration values are automatically saved to Flash and restored on reboot
-"""
+# ESPHome Configuration: ADE7880 3-Phase Energy Meter with Calibration
+#
+# HARDWARE WIRING (ESP32 to ADE7880):
+#   ESP32 GPIO21 (SDA) -----> ADE7880 SDA (I2C)
+#   ESP32 GPIO22 (SCL) -----> ADE7880 SCL (I2C)
+#   ESP32 GND -----------> ADE7880 GND
+#   ESP32 3.3V (optional) -> ADE7880 VDD_IO
+#
+# I2C ADDRESS:
+#   - 0x38 (default, used here)
+#   - 0x39 (if configured differently)
+#
+# CALIBRATION SERVICES (in Home Assistant):
+#   - ade7880.calibrate_voltage(phase: "A"|"B"|"C", target_voltage: float)
+#   - ade7880.calibrate_current(phase: "A"|"B"|"C", target_current: float)
+#   - ade7880.calibrate_power(phase: "A"|"B"|"C", target_power: float)
+#   - ade7880.reset_calibration()
 
 esphome:
   name: ade7880-energy-meter
   friendly_name: "ADE7880 3-Phase Energy Meter"
   platform: ESP32
   board: esp32dev
-  includes:
-    - ade7880_calibration.h
 
 # WiFi Configuration
 wifi:
@@ -61,67 +49,54 @@ i2c:
   id: bus_a
   sda: GPIO21
   scl: GPIO22
-  frequency: 100kHz  # ADE7880 I2C max 400kHz, using conservative 100kHz
+  frequency: 100kHz  # Conservative frequency for reliability
   scan: true
 
-# Custom Component: ADE7880 with Calibration
+# External Component: ADE7880 with Calibration
 external_components:
-  - source: /config/custom_components  # Or git URL
+  - source:
+      type: local
+      path: ./custom_components/ade7880
     components: [ade7880]
 
-# Sensors from ADE7880
+# Sensors from ADE7880 (all sensors are optional)
 sensor:
-  # Phase A Voltage
   - platform: ade7880
     i2c_id: bus_a
-    address: 0x38  # Default I2C address
+    address: 0x38
     update_interval: 60s  # Read every 60 seconds
-    
+
+    # Phase A
     voltage_a:
       name: "Phase A Voltage"
-      unit_of_measurement: "V"
       icon: mdi:lightning-bolt
-      
-    voltage_b:
-      name: "Phase B Voltage"
-      unit_of_measurement: "V"
-      icon: mdi:lightning-bolt
-      
-    voltage_c:
-      name: "Phase C Voltage"
-      unit_of_measurement: "V"
-      icon: mdi:lightning-bolt
-
-    # Phase A Current
     current_a:
       name: "Phase A Current"
-      unit_of_measurement: "A"
       icon: mdi:current-ac
-      
-    current_b:
-      name: "Phase B Current"
-      unit_of_measurement: "A"
-      icon: mdi:current-ac
-      
-    current_c:
-      name: "Phase C Current"
-      unit_of_measurement: "A"
-      icon: mdi:current-ac
-
-    # Phase A Power
     power_a:
       name: "Phase A Active Power"
-      unit_of_measurement: "W"
       icon: mdi:power
-      
+
+    # Phase B
+    voltage_b:
+      name: "Phase B Voltage"
+      icon: mdi:lightning-bolt
+    current_b:
+      name: "Phase B Current"
+      icon: mdi:current-ac
     power_b:
       name: "Phase B Active Power"
-      unit_of_measurement: "W"
       icon: mdi:power
-      
+
+    # Phase C
+    voltage_c:
+      name: "Phase C Voltage"
+      icon: mdi:lightning-bolt
+    current_c:
+      name: "Phase C Current"
+      icon: mdi:current-ac
     power_c:
       name: "Phase C Active Power"
-      unit_of_measurement: "W"
       icon: mdi:power
 
 # ============================================================================
