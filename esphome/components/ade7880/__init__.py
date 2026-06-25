@@ -4,6 +4,7 @@ This file handles:
 - Component-level configuration schema
 - PollingComponent base registration
 - I2C device setup
+- Sensor platform definitions (embedded)
 """
 
 import esphome.codegen as cg
@@ -44,11 +45,70 @@ CONF_POWER_A = "power_a"
 CONF_POWER_B = "power_b"
 CONF_POWER_C = "power_c"
 
+# Build sensor schema definitions as a dict to be added to CONFIG_SCHEMA
+SENSOR_CONFIG_SCHEMA = {
+    cv.Optional(CONF_VOLTAGE_A): sensor.sensor_schema(
+        unit_of_measurement=UNIT_VOLT,
+        device_class=DEVICE_CLASS_VOLTAGE,
+        accuracy_decimals=3,
+        state_class=STATE_CLASS_MEASUREMENT,
+    ),
+    cv.Optional(CONF_VOLTAGE_B): sensor.sensor_schema(
+        unit_of_measurement=UNIT_VOLT,
+        device_class=DEVICE_CLASS_VOLTAGE,
+        accuracy_decimals=3,
+        state_class=STATE_CLASS_MEASUREMENT,
+    ),
+    cv.Optional(CONF_VOLTAGE_C): sensor.sensor_schema(
+        unit_of_measurement=UNIT_VOLT,
+        device_class=DEVICE_CLASS_VOLTAGE,
+        accuracy_decimals=3,
+        state_class=STATE_CLASS_MEASUREMENT,
+    ),
+    cv.Optional(CONF_CURRENT_A): sensor.sensor_schema(
+        unit_of_measurement=UNIT_AMPERE,
+        device_class=DEVICE_CLASS_CURRENT,
+        accuracy_decimals=4,
+        state_class=STATE_CLASS_MEASUREMENT,
+    ),
+    cv.Optional(CONF_CURRENT_B): sensor.sensor_schema(
+        unit_of_measurement=UNIT_AMPERE,
+        device_class=DEVICE_CLASS_CURRENT,
+        accuracy_decimals=4,
+        state_class=STATE_CLASS_MEASUREMENT,
+    ),
+    cv.Optional(CONF_CURRENT_C): sensor.sensor_schema(
+        unit_of_measurement=UNIT_AMPERE,
+        device_class=DEVICE_CLASS_CURRENT,
+        accuracy_decimals=4,
+        state_class=STATE_CLASS_MEASUREMENT,
+    ),
+    cv.Optional(CONF_POWER_A): sensor.sensor_schema(
+        unit_of_measurement=UNIT_WATT,
+        device_class=DEVICE_CLASS_POWER,
+        accuracy_decimals=2,
+        state_class=STATE_CLASS_MEASUREMENT,
+    ),
+    cv.Optional(CONF_POWER_B): sensor.sensor_schema(
+        unit_of_measurement=UNIT_WATT,
+        device_class=DEVICE_CLASS_POWER,
+        accuracy_decimals=2,
+        state_class=STATE_CLASS_MEASUREMENT,
+    ),
+    cv.Optional(CONF_POWER_C): sensor.sensor_schema(
+        unit_of_measurement=UNIT_WATT,
+        device_class=DEVICE_CLASS_POWER,
+        accuracy_decimals=2,
+        state_class=STATE_CLASS_MEASUREMENT,
+    ),
+}
+
 # Configuration schema for the main component
-# IMPORTANT: Only component-level options, NOT sensor schemas
+# Include both component options AND sensor definitions in one schema
 CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(): cv.declare_id(ADE7880Component),
+        **SENSOR_CONFIG_SCHEMA,  # Unpack all sensor definitions here
     }
 ).extend(cv.polling_component_schema("60s")).extend(
     i2c.i2c_device_schema(0x38)
