@@ -22,6 +22,7 @@ from esphome.const import (
 from . import ADE7880Component, ade7880_ns
 
 # Configuration keys for sensors
+CONF_ADE7880_ID = "ade7880_id"
 CONF_VOLTAGE_A = "voltage_a"
 CONF_VOLTAGE_B = "voltage_b"
 CONF_VOLTAGE_C = "voltage_c"
@@ -40,7 +41,7 @@ SENSOR_SCHEMA = sensor.sensor_schema(
 
 CONFIG_SCHEMA = cv.Schema(
     {
-        cv.GenerateID(): cv.use_id(ADE7880Component),
+        cv.GenerateID(CONF_ADE7880_ID): cv.use_id(ADE7880Component),
         cv.Optional(CONF_VOLTAGE_A): sensor.sensor_schema(
             unit_of_measurement=UNIT_VOLT,
             device_class=DEVICE_CLASS_VOLTAGE,
@@ -107,7 +108,7 @@ async def to_code(config):
     2. Creates sensor objects for each configured channel
     3. Links sensors to the component's setter methods
     """
-    paren = await cg.get_variable(config[CONF_ID])
+    paren = await cg.get_variable(config[CONF_ADE7880_ID])
 
     # Phase A Voltage Sensor
     if CONF_VOLTAGE_A in config:
