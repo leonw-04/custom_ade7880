@@ -1,0 +1,232 @@
+"""Example ESPHome Configuration for ADE7880 Energy Meter with Calibration.
+
+This example demonstrates how to integrate the ADE7880 3-phase energy meter
+with on-board calibration capabilities into an ESPHome setup.
+
+WIRING (ESP32 to ADE7880):
+  ESP32 Pin 21 (SDA) -----> ADE7880 SDA (I2C)
+  ESP32 Pin 22 (SCL) -----> ADE7880 SCL (I2C)
+  ESP32 GND -----------> ADE7880 GND
+  ESP32 3V3 -----------> ADE7880 VDD (if needed)
+  ADE7880 IRQ (optional) -> ESP32 GPIO (for interrupt-based readings)
+
+I2C ADDRESS:
+  The ADE7880 has two possible I2C addresses:
+  - 0x38 (default, used in this example)
+  - 0x39 (if configured differently)
+
+USAGE:
+  1. Deploy this configuration to your ESP32 via esphome
+  2. Monitor the logs to verify I2C communication
+  3. Use Home Assistant UI to call the calibration services:
+     - calibrate_voltage: Calibrates RMS voltage for a specific phase
+     - calibrate_current: Calibrates RMS current for a specific phase
+     - calibrate_power: Calibrates active power for a specific phase
+     - reset_calibration: Resets all calibration values to zero
+  4. Calibration values are automatically saved to Flash and restored on reboot
+"""
+
+esphome:
+  name: ade7880-energy-meter
+  friendly_name: "ADE7880 3-Phase Energy Meter"
+  platform: ESP32
+  board: esp32dev
+  includes:
+    - ade7880_calibration.h
+
+# WiFi Configuration
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  power_save_mode: light
+
+# Home Assistant API
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+# OTA Updates
+ota:
+  password: !secret ota_password
+
+# Logging
+logger:
+  level: DEBUG
+  logs:
+    ade7880: DEBUG
+    i2c: DEBUG
+
+# I2C Bus Configuration
+i2c:
+  id: bus_a
+  sda: GPIO21
+  scl: GPIO22
+  frequency: 100kHz  # ADE7880 I2C max 400kHz, using conservative 100kHz
+  scan: true
+
+# Custom Component: ADE7880 with Calibration
+external_components:
+  - source: /config/custom_components  # Or git URL
+    components: [ade7880]
+
+# Sensors from ADE7880
+sensor:
+  # Phase A Voltage
+  - platform: ade7880
+    i2c_id: bus_a
+    address: 0x38  # Default I2C address
+    update_interval: 60s  # Read every 60 seconds
+    
+    voltage_a:
+      name: "Phase A Voltage"
+      unit_of_measurement: "V"
+      icon: mdi:lightning-bolt
+      
+    voltage_b:
+      name: "Phase B Voltage"
+      unit_of_measurement: "V"
+      icon: mdi:lightning-bolt
+      
+    voltage_c:
+      name: "Phase C Voltage"
+      unit_of_measurement: "V"
+      icon: mdi:lightning-bolt
+
+    # Phase A Current
+    current_a:
+      name: "Phase A Current"
+      unit_of_measurement: "A"
+      icon: mdi:current-ac
+      
+    current_b:
+      name: "Phase B Current"
+      unit_of_measurement: "A"
+      icon: mdi:current-ac
+      
+    current_c:
+      name: "Phase C Current"
+      unit_of_measurement: "A"
+      icon: mdi:current-ac
+
+    # Phase A Power
+    power_a:
+      name: "Phase A Active Power"
+      unit_of_measurement: "W"
+      icon: mdi:power
+      
+    power_b:
+      name: "Phase B Active Power"
+      unit_of_measurement: "W"
+      icon: mdi:power
+      
+    power_c:
+      name: "Phase C Active Power"
+      unit_of_measurement: "W"
+      icon: mdi:power
+
+# ============================================================================
+# CALIBRATION WORKFLOW
+# ============================================================================
+#
+# The ADE7880 component exposes the following services via Home Assistant:
+#
+# 1. calibrate_voltage(phase: string, target_voltage: float)
+#    Example: Call with phase="A" and target_voltage=230.0
+#    This service:
+#    - Reads the current (uncalibrated) VRMS value from the register
+#    - Calculates the gain correction: gain = ((target / measured) - 1) * 2^23
+#    - Writes the gain to the device's AVGAIN/BVGAIN/CVGAIN register
+#    - Saves the gain value to Flash storage
+#
+# 2. calibrate_current(phase: string, target_current: float)
+#    Example: Call with phase="A" and target_current=10.5
+#    Similar to voltage calibration but for IRMS registers (AIGAIN/BIGAIN/CIGAIN)
+#
+# 3. calibrate_power(phase: string, target_power: float)
+#    Example: Call with phase="A" and target_power=2300.0
+#    Similar to above but for active power (WATT registers and PGAIN registers)
+#
+# 4. reset_calibration()
+#    Resets all 9 gain registers (3 phases × 3 types) to 0x000000
+#    Clears Flash storage
+#
+# ============================================================================
+# CALIBRATION PROCEDURE
+# ============================================================================
+#
+# Prerequisites:
+#   - Reference measurement device (multimeter, clamp meter, power analyzer)
+#   - Known load (resistive for power calibration)
+#   - Device must be powered and measuring for at least 10 seconds
+#
+# Steps for Voltage Calibration (example for Phase A):
+#   1. Connect a reference voltmeter to Phase A (line-to-neutral or line-to-line)
+#   2. Note the reference voltage (e.g., 230.5 V)
+#   3. In Home Assistant, call service:
+#      service: ade7880.calibrate_voltage
+#      data:
+#        phase: "A"
+#        target_voltage: 230.5
+#   4. The component calculates and applies the gain correction
+#   5. Monitor logs for confirmation
+#   6. The calibration is persisted to Flash
+#
+# Steps for Current Calibration (example for Phase A):
+#   1. Connect a calibrated clamp meter to the Phase A wire
+#   2. Note the reference current (e.g., 10.2 A)
+#   3. Call service:
+#      service: ade7880.calibrate_current
+#      data:
+#        phase: "A"
+#        target_current: 10.2
+#   4. The component applies the correction and saves to Flash
+#
+# Steps for Power Calibration:
+#   1. Connect a known resistive load to Phase A (e.g., 2 kW heater)
+#   2. Use a reference meter to confirm power (e.g., 1987 W)
+#   3. Call service:
+#      service: ade7880.calibrate_power
+#      data:
+#        phase: "A"
+#        target_power: 1987
+#   4. The component applies the correction
+#
+# To Reset Calibration (return to defaults):
+#   Call service:
+#     service: ade7880.reset_calibration
+#
+# ============================================================================
+# TECHNICAL NOTES
+# ============================================================================
+#
+# 1. Calibration Formula:
+#    New Measurement = Raw Measurement × (1 + Gain_Register / 2^23)
+#    Where: Gain_Register = ((Target / Measured) - 1) × 2^23
+#
+# 2. Register Format:
+#    - Gain registers (0x43XX) are 24-bit signed values (two's complement)
+#    - Transmitted as 32-bit over I2C (Big-Endian)
+#    - Valid range: -0x800000 to +0x7FFFFF
+#    - Stored persistently in Flash via ESPPreferences
+#
+# 3. RMS Value Scaling:
+#    - Voltage RMS: Raw value × 0.001 = Volts
+#    - Current RMS: Raw value × 0.0001 = Amperes
+#    - Power: Raw value × 0.01 = Watts (after sign extension)
+#
+# 4. Measurement Accuracy:
+#    - Ensure stable input signals for at least 10-20 seconds before calibration
+#    - Reference devices should have ±1% accuracy or better
+#    - Perform voltage and current calibration first, then power calibration
+#
+# 5. Multiple Calibrations:
+#    - Each phase can be calibrated independently
+#    - Voltage, current, and power calibrations are separate
+#    - Later calibrations overwrite earlier ones (save old values if needed)
+#
+# 6. Flash Storage:
+#    - Calibration data uses ESPPreferences with CRC protection
+#    - Survives device reboots and OTA updates
+#    - Applied automatically on startup (within 1 second)
+#
+# ============================================================================
