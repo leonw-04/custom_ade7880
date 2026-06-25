@@ -1,0 +1,138 @@
+# ✅ FINAL CORRECTED EXAMPLE CONFIGURATION FOR ADE7880 COMPONENT
+# 
+# NEW ARCHITECTURE (ESPHome 2025+):
+# - All options go under ade7880: block (no separate sensor.ade7880 block!)
+# - Sensor definitions are part of the component configuration
+# - Simpler, cleaner structure
+
+esphome:
+  name: shelly-pro-3-em
+  platform: esp32
+  board: esp32dev
+
+# I2C Configuration
+i2c:
+  - id: i2c_id
+    sda: GPIO21
+    scl: GPIO22
+    frequency: 100kHz
+
+# ✅ CORRECT: ALL options under ade7880: block
+ade7880:
+  id: ade7880_device
+  i2c_id: i2c_id
+  address: 56
+  update_interval: 60s
+  
+  # Phase A Sensors
+  voltage_a:
+    name: "Phase A Voltage"
+    unit_of_measurement: "V"
+    device_class: voltage
+    state_class: measurement
+    accuracy_decimals: 3
+  
+  current_a:
+    name: "Phase A Current"
+    unit_of_measurement: "A"
+    device_class: current
+    state_class: measurement
+    accuracy_decimals: 4
+  
+  power_a:
+    name: "Phase A Power"
+    unit_of_measurement: "W"
+    device_class: power
+    state_class: measurement
+    accuracy_decimals: 2
+  
+  # Phase B Sensors
+  voltage_b:
+    name: "Phase B Voltage"
+    unit_of_measurement: "V"
+    device_class: voltage
+    state_class: measurement
+    accuracy_decimals: 3
+  
+  current_b:
+    name: "Phase B Current"
+    unit_of_measurement: "A"
+    device_class: current
+    state_class: measurement
+    accuracy_decimals: 4
+  
+  power_b:
+    name: "Phase B Power"
+    unit_of_measurement: "W"
+    device_class: power
+    state_class: measurement
+    accuracy_decimals: 2
+  
+  # Phase C Sensors
+  voltage_c:
+    name: "Phase C Voltage"
+    unit_of_measurement: "V"
+    device_class: voltage
+    state_class: measurement
+    accuracy_decimals: 3
+  
+  current_c:
+    name: "Phase C Current"
+    unit_of_measurement: "A"
+    device_class: current
+    state_class: measurement
+    accuracy_decimals: 4
+  
+  power_c:
+    name: "Phase C Power"
+    unit_of_measurement: "W"
+    device_class: power
+    state_class: measurement
+    accuracy_decimals: 2
+
+# External Components
+external_components:
+  - source:
+      type: local
+      path: ./components/ade7880
+    components: [ade7880]
+
+# Logging (for debugging)
+logger:
+  level: DEBUG
+  logs:
+    ade7880: DEBUG
+
+# Home Assistant API
+api:
+  services:
+    - service: calibrate_voltage
+      variables:
+        phase: string
+        target_voltage: float
+      then:
+        - logger.log:
+            format: "Calibrating voltage for phase %s to %.2f V"
+            args: ["phase.c_str()", "target_voltage"]
+    
+    - service: calibrate_current
+      variables:
+        phase: string
+        target_current: float
+      then:
+        - logger.log:
+            format: "Calibrating current for phase %s to %.2f A"
+            args: ["phase.c_str()", "target_current"]
+    
+    - service: calibrate_power
+      variables:
+        phase: string
+        target_power: float
+      then:
+        - logger.log:
+            format: "Calibrating power for phase %s to %.2f W"
+            args: ["phase.c_str()", "target_power"]
+    
+    - service: reset_calibration
+      then:
+        - logger.log: "Resetting all calibration data"
