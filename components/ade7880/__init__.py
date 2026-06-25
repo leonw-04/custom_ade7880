@@ -46,14 +46,10 @@ CONF_POWER_B = "power_b"
 CONF_POWER_C = "power_c"
 
 # Configuration schema for the main component
-# Build the base schema first, then extend with base schemas
-CONFIG_SCHEMA = (
-    cv.Schema({
+# All options must be in ONE Schema dict, not extended separately
+CONFIG_SCHEMA = cv.Schema(
+    {
         cv.GenerateID(): cv.declare_id(ADE7880Component),
-    })
-    .extend(cv.polling_component_schema("60s"))
-    .extend(i2c.i2c_device_schema(0x38))
-    .extend({
         # Phase A Sensors
         cv.Optional(CONF_VOLTAGE_A): sensor.sensor_schema(
             unit_of_measurement=UNIT_VOLT,
@@ -111,7 +107,9 @@ CONFIG_SCHEMA = (
             accuracy_decimals=2,
             state_class=STATE_CLASS_MEASUREMENT,
         ),
-    })
+    }
+).extend(cv.polling_component_schema("60s")).extend(
+    i2c.i2c_device_schema(0x38)
 )
 
 async def to_code(config):
