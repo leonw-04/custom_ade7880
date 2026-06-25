@@ -8,8 +8,17 @@ This file handles:
 
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.components import i2c
-from esphome.const import CONF_ID
+from esphome.components import i2c, sensor
+from esphome.const import (
+    CONF_ID,
+    DEVICE_CLASS_VOLTAGE,
+    DEVICE_CLASS_CURRENT,
+    DEVICE_CLASS_POWER,
+    STATE_CLASS_MEASUREMENT,
+    UNIT_VOLT,
+    UNIT_AMPERE,
+    UNIT_WATT,
+)
 
 CODEOWNERS = ["@leonw"]
 DEPENDENCIES = ["i2c"]
@@ -24,7 +33,19 @@ ADE7880Component = ade7880_ns.class_(
     i2c.I2CDevice,
 )
 
+# Configuration keys for sensors
+CONF_VOLTAGE_A = "voltage_a"
+CONF_VOLTAGE_B = "voltage_b"
+CONF_VOLTAGE_C = "voltage_c"
+CONF_CURRENT_A = "current_a"
+CONF_CURRENT_B = "current_b"
+CONF_CURRENT_C = "current_c"
+CONF_POWER_A = "power_a"
+CONF_POWER_B = "power_b"
+CONF_POWER_C = "power_c"
+
 # Configuration schema for the main component
+# IMPORTANT: Only component-level options, NOT sensor schemas
 CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(): cv.declare_id(ADE7880Component),
@@ -41,6 +62,7 @@ async def to_code(config):
     1. Creates an instance of ADE7880Component
     2. Registers it as a PollingComponent
     3. Links it to the I2C bus
+    4. Creates and links all sensor instances (if they exist in parent config)
     """
     var = cg.new_Pvariable(config[CONF_ID])
     
@@ -49,3 +71,20 @@ async def to_code(config):
     
     # Link to I2C bus
     await i2c.register_i2c_device(var, config)
+    
+    # Check parent for sensor configurations (defined in sensor.py)
+    # This allows users to define sensors under 'ade7880:' namespace in YAML
+    for conf_key, setter_name in [
+        (CONF_VOLTAGE_A, "set_voltage_sensor_a"),
+        (CONF_VOLTAGE_B, "set_voltage_sensor_b"),
+        (CONF_VOLTAGE_C, "set_voltage_sensor_c"),
+        (CONF_CURRENT_A, "set_current_sensor_a"),
+        (CONF_CURRENT_B, "set_current_sensor_b"),
+        (CONF_CURRENT_C, "set_current_sensor_c"),
+        (CONF_POWER_A, "set_power_sensor_a"),
+        (CONF_POWER_B, "set_power_sensor_b"),
+        (CONF_POWER_C, "set_power_sensor_c"),
+    ]:
+        if conf_key in config:
+            sens = await sensor.new_sensor(config[conf_key])
+            cg.add(getattr(var, setter_name)(sens))
